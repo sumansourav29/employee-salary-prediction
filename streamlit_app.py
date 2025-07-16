@@ -6,16 +6,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 def load_or_train_model(data):
-    # Rename the label column to standard name
     if "income" not in data.columns:
-        st.error("❌ 'income' column not found. Columns are: " + ", ".join(data.columns))
+        st.error("❌ 'income' column not found. Please check the dataset format.")
         st.stop()
 
     try:
         model = joblib.load("best_model.pkl")
         return model
     except Exception as e:
-        st.warning(f"⚠️ Couldn't load model. Training a new one: {e}")
+        st.warning(f"⚠️ Couldn't load model. Training a new one...")
         X = pd.get_dummies(data.drop("income", axis=1))
         y = data["income"]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -29,7 +28,6 @@ def main():
 
     try:
         df = pd.read_csv("adult.csv")
-        st.write("📄 Columns in dataset:", df.columns.tolist())
     except FileNotFoundError:
         st.error("❌ 'adult.csv' not found. Make sure it's in the repo.")
         return
