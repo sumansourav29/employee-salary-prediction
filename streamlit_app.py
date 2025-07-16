@@ -1,71 +1,51 @@
-#%%writefile app.py
 import streamlit as st
 import pandas as pd
 import joblib
+import os
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
-# Load the trained model
-model = joblib.load("best_model.pkl")
+def load_or_train_model(data):
+    try:
+        model = joblib.load("best_model.pkl")
+        return model
+    except Exception as e:
+        st.warning(f"⚠️ Couldn't load model. Training new one: {e}")
+        X = pd.get_dummies(data.drop("Salary", axis=1))
+        y = data["Salary"]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model = RandomForestClassifier()
+        model.fit(X_train, y_train)
+        joblib.dump(model, "best_model.pkl")
+        return model
 
-st.set_page_config(page_title="Edunet Foundation Presents Employee Salary Prediction", page_icon="💼", layout="centered")
+def main():
+    st.title("💼 Employee Salary Predictor")
 
-st.title("💼 Employee Salary Classification App")
-st.markdown("Predict whether an employee earns >50K or ≤50K based on input features.")
+    try:
+        df = pd.read_csv("adult.csv")
+    except FileNotFoundError:
+        st.error("❌ 'adult.csv' not found.")
+        return
 
-# Sidebar inputs (these must match your training feature columns)
-st.sidebar.header("Input the details of the Employee")
+    model = load_or_train_model(df)
 
-# ✨ Replace these fields with your dataset's actual input columns
-age = st.sidebar.slider("Age", 18, 65, 18)
-education = st.sidebar.selectbox("Education Level", [
-    "Bachelors", "Masters", "PhD", "HS-grad", "Assoc", "Some-college"
-])
-occupation = st.sidebar.selectbox("Job Role", [
-    "Tech-support", "Craft-repair", "Other-service", "Sales",
-    "Exec-managerial", "Prof-specialty", "Handlers-cleaners", "Machine-op-inspct",
-    "Adm-clerical", "Farming-fishing", "Transport-moving", "Priv-house-serv",
-    "Protective-serv", "Armed-Forces"
-])
-hours_per_week = st.sidebar.slider("Hours per week", 1, 80, 40)
-experience = st.sidebar.slider("Years of Experience", 0, 40, 5)
+    st.subheader("🔍 Predict Salary")
+    inputs = {}
+    for col in df.columns:
+        if col != "Salary":
+            inputs[col] = st.text_input(col)
 
-# Build input DataFrame (⚠️ must match preprocessing of your training data)
-input_df = pd.DataFrame({
-    'age': [age],
-    'workclass': [workclass],
-    'fnlwgt' : [fnlwgt],
-    'education' : [education],
-    'educational-num' : [educational-num],
-    'marital-status' : [marital-status],
-    'occupation' : [occupation],
-    'relationship' : [relationship],
-    'race' : [race],
-    'gender' : [gender],
-    'capital-gain' : [capital-gain],
-    'capital-loss' : [capital-loss],
-    'hours-per-week' : [hours-per-week],
-    'native-country' : [native-country]
-})
+    if st.button("Predict"):
+        try:
+            input_df = pd.DataFrame([inputs])
+            input_df = pd.get_dummies(input_df)
+            # Match columns to training data
+            input_df = input_df.reindex(columns=model.feature_names_in_, fill_value=0)
+            prediction = model.predict(input_df)
+            st.success(f"💰 Predicted Salary: {prediction[0]}")
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
 
-st.write("### 🔎 Input Data")
-st.write(input_df)
-
-# Predict button
-if st.button("Predict Salary Class"):
-    prediction = model.predict(input_df)
-    st.success(f"✅ Prediction: {prediction[0]}")
-
-# Batch prediction
-st.markdown("---")
-st.markdown("#### 📂 Batch Prediction")
-uploaded_file = st.file_uploader("Upload a CSV file for batch prediction", type="csv")
-
-if uploaded_file is not None:
-    batch_data = pd.read_csv(uploaded_file)
-    st.write("Uploaded data preview:", batch_data.head())
-    batch_preds = model.predict(batch_data)
-    batch_data['PredictedClass'] = batch_preds
-    st.write("✅ Predictions:")
-    st.write(batch_data.head())
-    csv = batch_data.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Predictions CSV", csv, file_name='predicted_classes.csv', mime='text/csv')
-
+if __name__ == "__main__":
+    main()
