@@ -24,7 +24,7 @@ def load_or_train_model(data):
         return model
 
 def main():
-    st.title("🧠 Income Level Predictor (UCI Adult Dataset)")
+    st.title("🧠 Employee Salary Predictor")
 
     try:
         df = pd.read_csv("adult.csv")
