@@ -10,7 +10,7 @@ import pandas as pd
 # In[2]:
 
 
-data=pd.read_csv(r"C:\Users\Nanthini M\Downloads\Edunet\AI\Implementation\adult.csv")
+data=pd.read_csv(r""C:\Users\suman\OneDrive\Desktop\AI\adult.csv"")
 
 
 # In[3]:
