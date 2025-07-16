@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 # Load your dataset
-df = pd.read_csv("employee_data.csv")  # Make sure this file is present in your repo
+df = pd.read_csv("adult.csv")  # Make sure this file is present in your repo
 
 # Define features and target
 x = df.drop("Salary", axis=1)  # Replace "Salary" if your target column is named differently
