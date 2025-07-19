@@ -2,18 +2,13 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
-import json
-import requests
-from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from streamlit_lottie import st_lottie
 
-# ---- PAGE CONFIG ----
+# Set page config
 st.set_page_config(page_title="Salary Predictor", page_icon="💰", layout="centered")
 
-
-# ---- CSS FOR DARK MODE ----
+# Custom dark mode CSS with white text and Poppins font
 def set_bg():
     st.markdown(
         """
@@ -55,24 +50,20 @@ def set_bg():
             background-color: #111;
             color: white;
         }
+
+        .css-1d391kg, .css-1offfwp, .css-10trblm {
+            color: white !important;
+        }
         </style>
-        """, unsafe_allow_html=True
+        """,
+        unsafe_allow_html=True
     )
 
+# Apply background and style
 set_bg()
 
-# ---- ANIMATION FUNCTION ----
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_salary = load_lottieurl("https://lottie.host/3b7f8dcf-3d6d-4141-9253-2121c6b51a2f/Sa7qJw7TOL.json")
-
-# ---- SIDEBAR ----
+# Sidebar info
 with st.sidebar:
-    st_lottie(lottie_salary, speed=1, height=200, key="salary")
     st.header("📘 About")
     st.markdown("""
     This app predicts whether a person's income exceeds **$50K/year** based on attributes.
@@ -81,10 +72,8 @@ with st.sidebar:
     - Streamlit
     - Scikit-learn
     - Random Forest Classifier
-    - streamlit-lottie (for animation)
     """)
 
-# ---- MODEL LOADER ----
 def load_or_train_model(data):
     if "income" not in data.columns:
         st.error("❌ 'income' column not found. Please check the dataset format.")
@@ -103,7 +92,6 @@ def load_or_train_model(data):
         joblib.dump(model, "best_model.pkl")
         return model
 
-# ---- MAIN APP ----
 def main():
     st.title("💼 Employee Salary Prediction")
     st.markdown("### 👇 Fill in the details to predict income bracket:")
@@ -164,22 +152,13 @@ def main():
             input_df_encoded = input_df_encoded.reindex(columns=model.feature_names_in_, fill_value=0)
             prediction = model.predict(input_df_encoded)
 
+            # Show result as toast popup
             st.toast(f"🎯 Predicted Income Category: {prediction[0]}", icon="💰")
 
-            # Save input to adult.csv
+            # Save user input to the dataset with unknown income
             input_df["income"] = "unknown"
             df = pd.concat([df, input_df], ignore_index=True)
             df.to_csv("adult.csv", index=False)
-
-            # ---- LOG TO user_logs.csv ----
-            input_df["prediction"] = prediction[0]
-            input_df["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            if not os.path.exists("user_logs.csv"):
-                input_df.to_csv("user_logs.csv", index=False)
-            else:
-                logs_df = pd.read_csv("user_logs.csv")
-                logs_df = pd.concat([logs_df, input_df], ignore_index=True)
-                logs_df.to_csv("user_logs.csv", index=False)
 
         except Exception as e:
             st.error(f"Prediction failed: {e}")
