@@ -8,26 +8,65 @@ from sklearn.model_selection import train_test_split
 # Set page config
 st.set_page_config(page_title="Salary Predictor", page_icon="💰", layout="centered")
 
-# Background styling (optional - CSS for color or image)
+# Custom dark mode CSS with white text and Poppins font
 def set_bg():
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+        html, body, [class*="st-"] {
+            font-family: 'Poppins', sans-serif;
+            background-color: #000000;
+            color: white;
+        }
+
         .stApp {
-            background-color: #f2f2f2;
-            background-image: linear-gradient(to bottom right, #dbeafe, #fef3c7);
-            font-family: 'Segoe UI', sans-serif;
+            background-color: #000000;
+        }
+
+        .stTextInput > div > div > input,
+        .stSelectbox > div > div > div,
+        .stTextArea textarea {
+            background-color: #1e1e1e !important;
+            color: white !important;
+            border: 1px solid #333;
+        }
+
+        .stButton > button {
+            background-color: #333 !important;
+            color: white !important;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stButton > button:hover {
+            background-color: #555 !important;
+        }
+
+        .stSidebar {
+            background-color: #111;
+            color: white;
+        }
+
+        .css-1d391kg, .css-1offfwp, .css-10trblm {
+            color: white !important;
         }
         </style>
-        """, unsafe_allow_html=True
+        """,
+        unsafe_allow_html=True
     )
+
+# Apply background and style
 set_bg()
 
 # Sidebar info
 with st.sidebar:
     st.header("📘 About")
     st.markdown("""
-    This app predicts whether a person's income exceeds **$50K/year** based on their attributes.
+    This app predicts whether a person's income exceeds **$50K/year** based on attributes.
 
     🧠 Built with:
     - Streamlit
@@ -54,8 +93,8 @@ def load_or_train_model(data):
         return model
 
 def main():
-    st.title("🧠 Employee Salary Prediction")
-    st.markdown("### 👇 Fill in the details below to predict income bracket:")
+    st.title("💼 Employee Salary Prediction")
+    st.markdown("### 👇 Fill in the details to predict income bracket:")
 
     try:
         df = pd.read_csv("adult.csv")
@@ -65,7 +104,7 @@ def main():
 
     model = load_or_train_model(df)
 
-    with st.expander("📂 View sample data"):
+    with st.expander("📂 View Sample Data"):
         st.dataframe(df.head())
 
     dropdown_options = {
@@ -112,9 +151,11 @@ def main():
             input_df_encoded = pd.get_dummies(input_df)
             input_df_encoded = input_df_encoded.reindex(columns=model.feature_names_in_, fill_value=0)
             prediction = model.predict(input_df_encoded)
+
+            # Show result as toast popup
             st.toast(f"🎯 Predicted Income Category: {prediction[0]}", icon="💰")
 
-            # Optional: Save user input
+            # Save user input to the dataset with unknown income
             input_df["income"] = "unknown"
             df = pd.concat([df, input_df], ignore_index=True)
             df.to_csv("adult.csv", index=False)
