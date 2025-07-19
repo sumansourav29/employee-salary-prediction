@@ -5,40 +5,16 @@ import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
-# Page config and dark theme
-st.set_page_config(
-    page_title="Employee Salary Predictor",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
-
-# Dark theme custom CSS
-st.markdown("""
-    <style>
-    body {
-        background-color: #0e1117;
-        color: white;
-    }
-    .stApp {
-        background-color: #0e1117;
-        color: white;
-    }
-    .css-18e3th9, .css-1d391kg {
-        background-color: #0e1117;
-        color: white;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Load or train model
+# Function to load or train the model
 def load_or_train_model(data):
     if "income" not in data.columns:
-        st.error("❌ 'income' column not found in dataset.")
+        st.error("❌ 'income' column not found. Please check the dataset format.")
         st.stop()
+
     try:
         model = joblib.load("best_model.pkl")
         return model
-    except:
+    except Exception:
         st.warning("⚠️ Couldn't load model. Training a new one...")
         X = pd.get_dummies(data.drop("income", axis=1))
         y = data["income"]
@@ -48,33 +24,32 @@ def load_or_train_model(data):
         joblib.dump(model, "best_model.pkl")
         return model
 
-# Sidebar Information
-st.sidebar.title("ℹ️ About the App")
-st.sidebar.markdown("""
-This app predicts whether a person's annual income is **more than $50K** or **less than or equal to $50K** using a machine learning model trained on the **UCI Adult Income Dataset**.
-
-👤 Built by: [Suman Sourav Sahoo](https://github.com/sumansourav29)
-
-📂 Model: Random Forest Classifier  
-📊 Dataset: `adult.csv`  
-🧠 Features: workclass, education, marital-status, occupation, etc.
-""")
-
-# Main function
+# Main app
 def main():
-    st.title("🧠 Employee Salary Predictor")
+    st.set_page_config(page_title="Employee Salary Predictor", layout="centered", initial_sidebar_state="expanded")
 
-    # Load dataset
+    # Sidebar details
+    with st.sidebar:
+        st.title("💼 About This App")
+        st.markdown("""
+        - Predict whether an employee earns **>50K or <=50K** USD annually.
+        - Based on demographic and work-related features.
+        - Uses a **Random Forest Classifier** trained on the Adult dataset.
+        - Developed by [Suman Sourav](https://github.com/sumansourav29)
+        """)
+
+    st.markdown("<h1 style='color:white; text-align:center;'>🧠 Employee Salary Predictor</h1>", unsafe_allow_html=True)
+
+    # Load data
     try:
         df = pd.read_csv("adult.csv")
     except FileNotFoundError:
-        st.error("❌ 'adult.csv' not found.")
+        st.error("❌ 'adult.csv' not found. Make sure it's in the project directory.")
         return
 
     model = load_or_train_model(df)
 
-    st.subheader("🔍 Enter Applicant Details")
-
+    # Dropdown options
     dropdown_options = {
         "workclass": ['Private', 'Local-gov', 'Self-emp-not-inc', 'Federal-gov',
                       'State-gov', 'Self-emp-inc', 'Without-pay', 'Never-worked'],
@@ -89,47 +64,58 @@ def main():
         "relationship": ['Own-child', 'Husband', 'Not-in-family', 'Unmarried', 'Wife', 'Other-relative'],
         "race": ['Black', 'White', 'Asian-Pac-Islander', 'Other', 'Amer-Indian-Eskimo'],
         "gender": ['Male', 'Female'],
-        "native-country": ['United-States', 'India', 'Philippines', 'Germany', 'Mexico', 'Canada']
+        "native-country": ['United-States', 'Peru', 'Guatemala', 'Mexico', 'Dominican-Republic', 'Ireland',
+                           'Germany', 'Philippines', 'Thailand', 'Haiti', 'El-Salvador', 'Puerto-Rico',
+                           'Vietnam', 'South', 'Columbia', 'Japan', 'India', 'Cambodia', 'Poland', 'Laos',
+                           'England', 'Cuba', 'Taiwan', 'Italy', 'Canada', 'Portugal', 'China', 'Nicaragua',
+                           'Honduras', 'Iran', 'Scotland', 'Jamaica', 'Ecuador', 'Yugoslavia', 'Hungary',
+                           'Hong', 'Greece', 'Trinadad&Tobago', 'Outlying-US(Guam-USVI-etc)', 'France',
+                           'Holand-Netherlands']
     }
 
+    # Input form
+    st.subheader("🔍 Enter Details to Predict Income Bracket")
     inputs = {}
+
     for col in df.columns:
         if col != "income":
             if col in dropdown_options:
-                options = dropdown_options[col] + ["Other"]
+                default_option = "-- Select --"
+                options = [default_option] + dropdown_options[col] + ["Other"]
                 selection = st.selectbox(f"{col}", options)
-                if selection == "Other":
-                    custom_val = st.text_input(f"Enter custom value for {col}")
-                    inputs[col] = custom_val
+
+                if selection == default_option:
+                    inputs[col] = ""
+                elif selection == "Other":
+                    custom_value = st.text_input(f"Enter custom value for {col}")
+                    inputs[col] = custom_value
                 else:
                     inputs[col] = selection
             else:
                 inputs[col] = st.text_input(f"{col}", placeholder=f"Enter {col}...")
 
-    if st.button("🚀 Predict"):
-        try:
-            input_df = pd.DataFrame([inputs])
-            input_df_encoded = pd.get_dummies(input_df)
-            input_df_encoded = input_df_encoded.reindex(columns=model.feature_names_in_, fill_value=0)
-            prediction = model.predict(input_df_encoded)
+    if st.button("🔮 Predict"):
+        if "" in inputs.values():
+            st.warning("⚠️ Please fill all fields before predicting.")
+        else:
+            try:
+                input_df = pd.DataFrame([inputs])
+                input_df = pd.get_dummies(input_df)
+                input_df = input_df.reindex(columns=model.feature_names_in_, fill_value=0)
+                prediction = model.predict(input_df)[0]
+                st.success(f"📈 Predicted Income Category: **{'More than 50K' if prediction == '>50K' else 'Less than or equal to 50K'} USD**")
 
-            # Friendly message
-            result_text = (
-                "More than $50K" if prediction[0].strip().startswith(">") else
-                "Less than or equal to $50K"
-            )
-            st.toast(f"🎯 Predicted Income: **{result_text}**", icon="💰")
+                # Log the input and prediction (append to CSV)
+                log_data = pd.DataFrame([inputs])
+                log_data["prediction"] = prediction
+                if os.path.exists("prediction_log.csv"):
+                    log_data.to_csv("prediction_log.csv", mode='a', header=False, index=False)
+                else:
+                    log_data.to_csv("prediction_log.csv", index=False)
 
-            # Log prediction
-            log_data = input_df.copy()
-            log_data["prediction"] = result_text
-            if not os.path.exists("prediction_logs.csv"):
-                log_data.to_csv("prediction_logs.csv", index=False)
-            else:
-                log_data.to_csv("prediction_logs.csv", mode='a', header=False, index=False)
+            except Exception as e:
+                st.error(f"❌ Prediction failed: {e}")
 
-        except Exception as e:
-            st.error(f"Prediction failed: {e}")
-
+# Run the app
 if __name__ == "__main__":
     main()
