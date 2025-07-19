@@ -2,4 +2,5 @@ streamlit
 pandas
 scikit-learn
 joblib
-numpy
+streamlit-lottie
+requests
