@@ -132,4 +132,66 @@ def main():
     dropdown_options = {
         "workclass": ['Private', 'Local-gov', 'Self-emp-not-inc', 'Federal-gov',
                       'State-gov', 'Self-emp-inc', 'Without-pay', 'Never-worked'],
-        "education":
+        "education": ['11th', 'HS-grad', 'Assoc-acdm', 'Some-college', 'Prof-school',
+                      'Bachelors', 'Masters', 'Doctorate', 'Assoc-voc', '12th', 'Preschool'],
+        "marital-status": ['Never-married', 'Married-civ-spouse', 'Widowed', 'Divorced',
+                           'Separated', 'Married-spouse-absent', 'Married-AF-spouse'],
+        "occupation": ['Machine-op-inspct', 'Farming-fishing', 'Protective-serv', 'Other-service',
+                       'Prof-specialty', 'Craft-repair', 'Adm-clerical', 'Exec-managerial',
+                       'Tech-support', 'Sales', 'Priv-house-serv', 'Transport-moving',
+                       'Handlers-cleaners', 'Armed-Forces'],
+        "relationship": ['Own-child', 'Husband', 'Not-in-family', 'Unmarried', 'Wife', 'Other-relative'],
+        "race": ['Black', 'White', 'Asian-Pac-Islander', 'Other', 'Amer-Indian-Eskimo'],
+        "gender": ['Male', 'Female'],
+        "native-country": ['United-States', 'Peru', 'Guatemala', 'Mexico', 'Dominican-Republic', 'Ireland',
+                           'Germany', 'Philippines', 'Thailand', 'Haiti', 'El-Salvador', 'Puerto-Rico',
+                           'Vietnam', 'South', 'Columbia', 'Japan', 'India', 'Cambodia', 'Poland', 'Laos',
+                           'England', 'Cuba', 'Taiwan', 'Italy', 'Canada', 'Portugal', 'China', 'Nicaragua',
+                           'Honduras', 'Iran', 'Scotland', 'Jamaica', 'Ecuador', 'Yugoslavia', 'Hungary',
+                           'Hong', 'Greece', 'Trinadad&Tobago', 'Outlying-US(Guam-USVI-etc)', 'France',
+                           'Holand-Netherlands']
+    }
+
+    inputs = {}
+    for col in df.columns:
+        if col != "income":
+            if col in dropdown_options:
+                options = dropdown_options[col] + ["Others"]
+                selection = st.selectbox(f"🔽 {col}", options)
+                if selection == "Others":
+                    custom_value = st.text_input(f"✍️ Enter custom value for {col}")
+                    inputs[col] = custom_value
+                else:
+                    inputs[col] = selection
+            else:
+                inputs[col] = st.text_input(f"✍️ {col}")
+
+    if st.button("🚀 Predict"):
+        try:
+            input_df = pd.DataFrame([inputs])
+            input_df_encoded = pd.get_dummies(input_df)
+            input_df_encoded = input_df_encoded.reindex(columns=model.feature_names_in_, fill_value=0)
+            prediction = model.predict(input_df_encoded)
+
+            st.toast(f"🎯 Predicted Income Category: {prediction[0]}", icon="💰")
+
+            # Save to adult.csv
+            input_df["income"] = "unknown"
+            df = pd.concat([df, input_df], ignore_index=True)
+            df.to_csv("adult.csv", index=False)
+
+            # Log to user_logs.csv
+            input_df["prediction"] = prediction[0]
+            input_df["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if not os.path.exists("user_logs.csv"):
+                input_df.to_csv("user_logs.csv", index=False)
+            else:
+                logs_df = pd.read_csv("user_logs.csv")
+                logs_df = pd.concat([logs_df, input_df], ignore_index=True)
+                logs_df.to_csv("user_logs.csv", index=False)
+
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
+
+if __name__ == "__main__":
+    main()
