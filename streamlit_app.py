@@ -63,7 +63,14 @@ def main():
     for col in df.columns:
         if col != "income":
             if col in dropdown_options:
-                inputs[col] = st.selectbox(f"{col}", dropdown_options[col])
+                options = dropdown_options[col] + ["Others"]
+                selection = st.selectbox(f"{col}", options)
+
+                if selection == "Others":
+                    custom_value = st.text_input(f"Enter custom value for {col}")
+                    inputs[col] = custom_value
+                else:
+                    inputs[col] = selection
             else:
                 inputs[col] = st.text_input(f"{col}")
 
