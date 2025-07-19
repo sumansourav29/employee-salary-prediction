@@ -2,89 +2,43 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
-from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
-# ---- PAGE CONFIG ----
-st.set_page_config(page_title="Salary Predictor", page_icon="💰", layout="centered")
+# Page config and dark theme
+st.set_page_config(
+    page_title="Employee Salary Predictor",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
 
-# ---- CSS FOR DARK MODE ----
-def set_bg():
-    st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+# Dark theme custom CSS
+st.markdown("""
+    <style>
+    body {
+        background-color: #0e1117;
+        color: white;
+    }
+    .stApp {
+        background-color: #0e1117;
+        color: white;
+    }
+    .css-18e3th9, .css-1d391kg {
+        background-color: #0e1117;
+        color: white;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-        html, body, [class*="st-"] {
-            font-family: 'Poppins', sans-serif;
-            background-color: #000000;
-            color: white;
-        }
-
-        .stApp {
-            background-color: #000000;
-        }
-
-        .stTextInput > div > div > input,
-        .stSelectbox > div > div > div,
-        .stTextArea textarea {
-            background-color: #1e1e1e !important;
-            color: white !important;
-            border: 1px solid #333;
-        }
-
-        .stButton > button {
-            background-color: #333 !important;
-            color: white !important;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .stButton > button:hover {
-            background-color: #555 !important;
-        }
-
-        .stSidebar {
-            background-color: #111;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True
-    )
-
-set_bg()
-
-# ---- SIDEBAR ----
-with st.sidebar:
-    st.title("💼 Salary Predictor")
-    st.subheader("👨‍💻 Developer Info")
-    st.markdown("""
-    **Name:** Suman Sourav Sahoo  
-    **College:** ITER, SOA University  
-    **Org:** EDUNET Foundation  
-    
-    ---
-    This app predicts whether a person's income exceeds **$50K/year** based on attributes.
-
-    🧠 Built with:
-    - Streamlit
-    - Scikit-learn
-    - Random Forest
-    """)
-
-# ---- MODEL LOADER ----
+# Load or train model
 def load_or_train_model(data):
     if "income" not in data.columns:
-        st.error("❌ 'income' column not found. Please check the dataset format.")
+        st.error("❌ 'income' column not found in dataset.")
         st.stop()
-
     try:
         model = joblib.load("best_model.pkl")
         return model
-    except Exception:
+    except:
         st.warning("⚠️ Couldn't load model. Training a new one...")
         X = pd.get_dummies(data.drop("income", axis=1))
         y = data["income"]
@@ -94,21 +48,32 @@ def load_or_train_model(data):
         joblib.dump(model, "best_model.pkl")
         return model
 
-# ---- MAIN APP ----
-def main():
-    st.title("💼 Employee Salary Prediction")
-    st.markdown("### 👇 Fill in the details to predict income bracket:")
+# Sidebar Information
+st.sidebar.title("ℹ️ About the App")
+st.sidebar.markdown("""
+This app predicts whether a person's annual income is **more than $50K** or **less than or equal to $50K** using a machine learning model trained on the **UCI Adult Income Dataset**.
 
+👤 Built by: [Suman Sourav Sahoo](https://github.com/sumansourav29)
+
+📂 Model: Random Forest Classifier  
+📊 Dataset: `adult.csv`  
+🧠 Features: workclass, education, marital-status, occupation, etc.
+""")
+
+# Main function
+def main():
+    st.title("🧠 Employee Salary Predictor")
+
+    # Load dataset
     try:
         df = pd.read_csv("adult.csv")
     except FileNotFoundError:
-        st.error("❌ 'adult.csv' not found. Make sure it's in the repo.")
+        st.error("❌ 'adult.csv' not found.")
         return
 
     model = load_or_train_model(df)
 
-    with st.expander("📂 View Sample Data"):
-        st.dataframe(df.head())
+    st.subheader("🔍 Enter Applicant Details")
 
     dropdown_options = {
         "workclass": ['Private', 'Local-gov', 'Self-emp-not-inc', 'Federal-gov',
@@ -124,29 +89,22 @@ def main():
         "relationship": ['Own-child', 'Husband', 'Not-in-family', 'Unmarried', 'Wife', 'Other-relative'],
         "race": ['Black', 'White', 'Asian-Pac-Islander', 'Other', 'Amer-Indian-Eskimo'],
         "gender": ['Male', 'Female'],
-        "native-country": ['United-States', 'Peru', 'Guatemala', 'Mexico', 'Dominican-Republic', 'Ireland',
-                           'Germany', 'Philippines', 'Thailand', 'Haiti', 'El-Salvador', 'Puerto-Rico',
-                           'Vietnam', 'South', 'Columbia', 'Japan', 'India', 'Cambodia', 'Poland', 'Laos',
-                           'England', 'Cuba', 'Taiwan', 'Italy', 'Canada', 'Portugal', 'China', 'Nicaragua',
-                           'Honduras', 'Iran', 'Scotland', 'Jamaica', 'Ecuador', 'Yugoslavia', 'Hungary',
-                           'Hong', 'Greece', 'Trinadad&Tobago', 'Outlying-US(Guam-USVI-etc)', 'France',
-                           'Holand-Netherlands']
+        "native-country": ['United-States', 'India', 'Philippines', 'Germany', 'Mexico', 'Canada']
     }
 
     inputs = {}
     for col in df.columns:
         if col != "income":
             if col in dropdown_options:
-                options = dropdown_options[col] + ["Others"]
-                selection = st.selectbox(f"🔽 {col}", options)
-
-                if selection == "Others":
-                    custom_value = st.text_input(f"✍️ Enter custom value for {col}")
-                    inputs[col] = custom_value
+                options = dropdown_options[col] + ["Other"]
+                selection = st.selectbox(f"{col}", options)
+                if selection == "Other":
+                    custom_val = st.text_input(f"Enter custom value for {col}")
+                    inputs[col] = custom_val
                 else:
                     inputs[col] = selection
             else:
-                inputs[col] = st.text_input(f"✍️ {col}")
+                inputs[col] = st.text_input(f"{col}", placeholder=f"Enter {col}...")
 
     if st.button("🚀 Predict"):
         try:
@@ -155,22 +113,20 @@ def main():
             input_df_encoded = input_df_encoded.reindex(columns=model.feature_names_in_, fill_value=0)
             prediction = model.predict(input_df_encoded)
 
-            st.toast(f"🎯 Predicted Income Category: {prediction[0]}", icon="💰")
+            # Friendly message
+            result_text = (
+                "More than $50K" if prediction[0].strip().startswith(">") else
+                "Less than or equal to $50K"
+            )
+            st.toast(f"🎯 Predicted Income: **{result_text}**", icon="💰")
 
-            # Save input to adult.csv
-            input_df["income"] = "unknown"
-            df = pd.concat([df, input_df], ignore_index=True)
-            df.to_csv("adult.csv", index=False)
-
-            # ---- LOG TO user_logs.csv ----
-            input_df["prediction"] = prediction[0]
-            input_df["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            if not os.path.exists("user_logs.csv"):
-                input_df.to_csv("user_logs.csv", index=False)
+            # Log prediction
+            log_data = input_df.copy()
+            log_data["prediction"] = result_text
+            if not os.path.exists("prediction_logs.csv"):
+                log_data.to_csv("prediction_logs.csv", index=False)
             else:
-                logs_df = pd.read_csv("user_logs.csv")
-                logs_df = pd.concat([logs_df, input_df], ignore_index=True)
-                logs_df.to_csv("user_logs.csv", index=False)
+                log_data.to_csv("prediction_logs.csv", mode='a', header=False, index=False)
 
         except Exception as e:
             st.error(f"Prediction failed: {e}")
