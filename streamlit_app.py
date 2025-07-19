@@ -5,7 +5,33 @@ import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
-# Function to load or train the model
+# Load dataset
+@st.cache_data
+def load_data():
+    return pd.read_csv("adult.csv")
+
+df = load_data()
+
+# Max values for numeric inputs
+max_vals = {
+    "fnlwgt": int(df["fnlwgt"].max()),
+    "education-num": int(df["education-num"].max()),
+    "hours-per-week": int(df["hours-per-week"].max())
+}
+
+# Dropdown options
+dropdown_options = {
+    "workclass": df["workclass"].dropna().unique().tolist(),
+    "education": df["education"].dropna().unique().tolist(),
+    "marital-status": df["marital-status"].dropna().unique().tolist(),
+    "occupation": df["occupation"].dropna().unique().tolist(),
+    "relationship": df["relationship"].dropna().unique().tolist(),
+    "race": df["race"].dropna().unique().tolist(),
+    "gender": df["gender"].dropna().unique().tolist(),
+    "native-country": df["native-country"].dropna().unique().tolist()
+}
+
+# Train or load model
 def load_or_train_model(data):
     if "income" not in data.columns:
         st.error("❌ 'income' column not found. Please check the dataset format.")
@@ -13,109 +39,64 @@ def load_or_train_model(data):
 
     try:
         model = joblib.load("best_model.pkl")
-        return model
-    except Exception:
-        st.warning("⚠️ Couldn't load model. Training a new one...")
+    except:
+        st.warning("Training a new model...")
         X = pd.get_dummies(data.drop("income", axis=1))
         y = data["income"]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         model = RandomForestClassifier()
         model.fit(X_train, y_train)
         joblib.dump(model, "best_model.pkl")
-        return model
+    return model
 
-# Main app
-def main():
-    st.set_page_config(page_title="Employee Salary Predictor", layout="centered", initial_sidebar_state="expanded")
+model = load_or_train_model(df)
 
-    # Sidebar details
-    with st.sidebar:
-        st.title("💼 About This App")
-        st.markdown("""
-        - Predict whether an employee earns **>50K or <=50K** USD annually.
-        - Based on demographic and work-related features.
-        - Uses a **Random Forest Classifier** trained on the Adult dataset.
-        - Developed by [Suman Sourav](https://github.com/sumansourav29)
-        """)
+# Streamlit UI
+st.set_page_config(page_title="Employee Salary Predictor", layout="wide")
+st.title("💼 Employee Salary Predictor")
 
-    st.markdown("<h1 style='color:white; text-align:center;'>🧠 Employee Salary Predictor</h1>", unsafe_allow_html=True)
+st.sidebar.title("📘 About")
+st.sidebar.info("""
+This app predicts whether an individual's income is more or less than $50K/year based on demographic data.
 
-    # Load data
-    try:
-        df = pd.read_csv("adult.csv")
-    except FileNotFoundError:
-        st.error("❌ 'adult.csv' not found. Make sure it's in the project directory.")
-        return
+Developed by: [Your Name]
+Data: UCI Adult Income Dataset
+""")
 
-    model = load_or_train_model(df)
+st.subheader("🔍 Fill the details below")
 
-    # Dropdown options
-    dropdown_options = {
-        "workclass": ['Private', 'Local-gov', 'Self-emp-not-inc', 'Federal-gov',
-                      'State-gov', 'Self-emp-inc', 'Without-pay', 'Never-worked'],
-        "education": ['11th', 'HS-grad', 'Assoc-acdm', 'Some-college', 'Prof-school',
-                      'Bachelors', 'Masters', 'Doctorate', 'Assoc-voc', '12th', 'Preschool'],
-        "marital-status": ['Never-married', 'Married-civ-spouse', 'Widowed', 'Divorced',
-                           'Separated', 'Married-spouse-absent', 'Married-AF-spouse'],
-        "occupation": ['Machine-op-inspct', 'Farming-fishing', 'Protective-serv', 'Other-service',
-                       'Prof-specialty', 'Craft-repair', 'Adm-clerical', 'Exec-managerial',
-                       'Tech-support', 'Sales', 'Priv-house-serv', 'Transport-moving',
-                       'Handlers-cleaners', 'Armed-Forces'],
-        "relationship": ['Own-child', 'Husband', 'Not-in-family', 'Unmarried', 'Wife', 'Other-relative'],
-        "race": ['Black', 'White', 'Asian-Pac-Islander', 'Other', 'Amer-Indian-Eskimo'],
-        "gender": ['Male', 'Female'],
-        "native-country": ['United-States', 'Peru', 'Guatemala', 'Mexico', 'Dominican-Republic', 'Ireland',
-                           'Germany', 'Philippines', 'Thailand', 'Haiti', 'El-Salvador', 'Puerto-Rico',
-                           'Vietnam', 'South', 'Columbia', 'Japan', 'India', 'Cambodia', 'Poland', 'Laos',
-                           'England', 'Cuba', 'Taiwan', 'Italy', 'Canada', 'Portugal', 'China', 'Nicaragua',
-                           'Honduras', 'Iran', 'Scotland', 'Jamaica', 'Ecuador', 'Yugoslavia', 'Hungary',
-                           'Hong', 'Greece', 'Trinadad&Tobago', 'Outlying-US(Guam-USVI-etc)', 'France',
-                           'Holand-Netherlands']
-    }
+inputs = {}
+for col in df.columns:
+    if col != "income":
+        if col in dropdown_options:
+            options = [""] + dropdown_options[col] + ["Others"]
+            selection = st.selectbox(f"🔽 {col}", options, index=0, key=col)
 
-    # Input form
-    st.subheader("🔍 Enter Details to Predict Income Bracket")
-    inputs = {}
-
-    for col in df.columns:
-        if col != "income":
-            if col in dropdown_options:
-                default_option = "-- Select --"
-                options = [default_option] + dropdown_options[col] + ["Other"]
-                selection = st.selectbox(f"{col}", options)
-
-                if selection == default_option:
-                    inputs[col] = ""
-                elif selection == "Other":
-                    custom_value = st.text_input(f"Enter custom value for {col}")
-                    inputs[col] = custom_value
-                else:
-                    inputs[col] = selection
-            else:
-                inputs[col] = st.text_input(f"{col}", placeholder=f"Enter {col}...")
-
-    if st.button("🔮 Predict"):
-        if "" in inputs.values():
-            st.warning("⚠️ Please fill all fields before predicting.")
+            if selection == "Others":
+                custom_value = st.text_input(f"✍️ Enter custom value for {col}", key=f"{col}_custom")
+                inputs[col] = custom_value
+            elif selection != "":
+                inputs[col] = selection
         else:
-            try:
-                input_df = pd.DataFrame([inputs])
-                input_df = pd.get_dummies(input_df)
-                input_df = input_df.reindex(columns=model.feature_names_in_, fill_value=0)
-                prediction = model.predict(input_df)[0]
-                st.success(f"📈 Predicted Income Category: **{'More than 50K' if prediction == '>50K' else 'Less than or equal to 50K'} USD**")
+            if col in max_vals:
+                value = st.text_input(f"✍️ {col} (Max: {max_vals[col]})", key=col)
+                if value:
+                    try:
+                        val = int(value)
+                        if val > max_vals[col]:
+                            st.warning(f"⚠️ {col} cannot exceed {max_vals[col]}")
+                        inputs[col] = val
+                    except ValueError:
+                        st.error(f"❌ {col} must be a number.")
+            else:
+                inputs[col] = st.text_input(f"✍️ {col}", key=col)
 
-                # Log the input and prediction (append to CSV)
-                log_data = pd.DataFrame([inputs])
-                log_data["prediction"] = prediction
-                if os.path.exists("prediction_log.csv"):
-                    log_data.to_csv("prediction_log.csv", mode='a', header=False, index=False)
-                else:
-                    log_data.to_csv("prediction_log.csv", index=False)
-
-            except Exception as e:
-                st.error(f"❌ Prediction failed: {e}")
-
-# Run the app
-if __name__ == "__main__":
-    main()
+if st.button("🔮 Predict"):
+    try:
+        input_df = pd.DataFrame([inputs])
+        input_df = pd.get_dummies(input_df)
+        input_df = input_df.reindex(columns=model.feature_names_in_, fill_value=0)
+        prediction = model.predict(input_df)
+        st.success(f"📈 Predicted Income: {'>50K' if prediction[0] == '>50K' else '<=50K'}")
+    except Exception as e:
+        st.error(f"Prediction failed: {e}")
